@@ -176,7 +176,7 @@
 
     const packages = [
       {
-        name: "Paquete Rojo",
+        name: "Paquete Rojooo",
         color: "#ff5252",
         count: 0,
         description: "Paquete premium con entrega prioritaria. Incluye seguimiento en tiempo real y garantía de entrega en 24 horas.",
@@ -282,53 +282,66 @@
       saveThemePreference();
     }
 
-    function saveToLocalStorage() {
-      localStorage.setItem('packages', JSON.stringify(packages));
-    }
-
-    function loadFromLocalStorage() {
-      const data = localStorage.getItem('packages');
-      if (data) {
-        const loadedPackages = JSON.parse(data);
-        packages.forEach((pkg, index) => {
-          pkg.count = loadedPackages[index].count;
-        });
-      }
-      createPackageCards();
-    }
-
     function saveThemePreference() {
       localStorage.setItem('theme', document.body.dataset.theme);
     }
 
     function loadThemePreference() {
-      const theme = localStorage.getItem('theme');
-      if (theme) {
-        document.body.dataset.theme = theme;
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        document.body.dataset.theme = savedTheme;
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('packages', JSON.stringify(packages));
+    }
+
+    function loadFromLocalStorage() {
+      const savedPackages = localStorage.getItem('packages');
+      if (savedPackages) {
+        const parsedPackages = JSON.parse(savedPackages);
+        parsedPackages.forEach((pkg, index) => {
+          packages[index].count = pkg.count;
+          document.getElementById(`count-${index}`).textContent = pkg.count;
+        });
       }
     }
 
     function updateGoogleSheet(index, count) {
-      const data = {
-        values: [[packages[index].name, count]]
-      };
-
-      gapi.client.sheets.spreadsheets.values.update({
+      const params = {
         spreadsheetId: SHEET_ID,
-        range: `Hoja1!A${index + 2}`, // Asegúrate de que "Hoja1" sea el nombre correcto de tu hoja
+        range: `Control de Stock!A${index + 2}`, // Usa el nombre correcto de la hoja
         valueInputOption: 'USER_ENTERED',
-        resource: data,
-      }).then((response) => {
-        console.log(`Actualizado ${packages[index].name} a ${count}`);
-      }, (error) => {
-        console.error("Error al actualizar Google Sheets:", error);
+        resource: {
+          values: [
+            [count],
+          ],
+        },
+      };
+      const request = gapi.client.sheets.spreadsheets.values.update(params);
+      request.then(response => {
+        console.log(`Updated cell: ${response.result.updatedCells} cells updated.`);
+      }, error => {
+        console.error('Error updating sheet:', error);
       });
     }
 
-    // Cargar datos desde localStorage y tema al cargar
+    function initGAPI() {
+      gapi.load('client', () => {
+        gapi.client.init({
+          apiKey: API_KEY,
+          discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+        }).then(() => {
+          loadFromLocalStorage();
+        });
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      loadFromLocalStorage();
       loadThemePreference();
+      createPackageCards();
+      initGAPI();
     });
   </script>
 </body>
