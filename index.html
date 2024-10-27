@@ -283,65 +283,53 @@
     }
 
     function saveToLocalStorage() {
-      localStorage.setItem('packageCounts', JSON.stringify(packages.map(pkg => pkg.count)));
+      localStorage.setItem('packages', JSON.stringify(packages));
     }
 
     function loadFromLocalStorage() {
-      const savedCounts = JSON.parse(localStorage.getItem('packageCounts'));
-      if (savedCounts) {
-        savedCounts.forEach((count, index) => {
-          if (index < packages.length) {
-            packages[index].count = count;
-          }
+      const data = localStorage.getItem('packages');
+      if (data) {
+        const loadedPackages = JSON.parse(data);
+        packages.forEach((pkg, index) => {
+          pkg.count = loadedPackages[index].count;
         });
       }
+      createPackageCards();
     }
 
     function saveThemePreference() {
-      localStorage.setItem('theme', document.body.dataset.theme || 'light');
+      localStorage.setItem('theme', document.body.dataset.theme);
     }
 
     function loadThemePreference() {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme) {
-        document.body.dataset.theme = savedTheme;
+      const theme = localStorage.getItem('theme');
+      if (theme) {
+        document.body.dataset.theme = theme;
       }
     }
 
-    // Función para actualizar Google Sheets
     function updateGoogleSheet(index, count) {
       const data = {
         values: [[packages[index].name, count]]
       };
-      const params = {
+
+      gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `Hoja1!A${index + 2}`, // Cambia "Hoja1" si es necesario
-        valueInputOption: 'RAW',
+        range: `Hoja1!A${index + 2}`, // Asegúrate de que "Hoja1" sea el nombre correcto de tu hoja
+        valueInputOption: 'USER_ENTERED',
         resource: data,
-        auth: API_KEY
-      };
-      gapi.client.sheets.spreadsheets.values.update(params).then((response) => {
+      }).then((response) => {
         console.log(`Actualizado ${packages[index].name} a ${count}`);
+      }, (error) => {
+        console.error("Error al actualizar Google Sheets:", error);
       });
     }
 
-    // Inicialización
-    window.onload = () => {
-      gapi.load('client', () => {
-        gapi.client.setApiKey(API_KEY);
-        loadFromLocalStorage();
-        loadThemePreference();
-        createPackageCards();
-      });
-    };
-
-    // Cerrar modal al hacer clic fuera
-    window.onclick = (event) => {
-      const modal = document.getElementById('modal');
-      if (event.target === modal) {
-        closeModal();
-      }
-    };
+    // Cargar datos desde localStorage y tema al cargar
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFromLocalStorage();
+      loadThemePreference();
+    });
   </script>
 </body>
 </html>
