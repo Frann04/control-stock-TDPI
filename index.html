@@ -176,28 +176,22 @@
 
     const packages = [
       {
-        name: "Paquete Rojooo",
+        name: "Paquete Rojo",
         color: "#ff5252",
         count: 0,
-        description: "Paquete premium con entrega prioritaria. Incluye seguimiento en tiempo real y garantía de entrega en 24 horas.",
-        dimensions: "30cm x 20cm x 15cm",
-        maxWeight: "5kg"
+        description: "Paquete premium con entrega prioritaria.",
       },
       {
         name: "Paquete Azul",
         color: "#2196f3",
         count: 0,
-        description: "Paquete estándar con entrega en 48-72 horas. Incluye seguro básico de envío.",
-        dimensions: "25cm x 15cm x 10cm",
-        maxWeight: "3kg"
+        description: "Paquete estándar con entrega en 48-72 horas.",
       },
       {
         name: "Paquete Verde",
         color: "#4caf50",
         count: 0,
-        description: "Paquete eco-friendly con embalaje reciclable. Ideal para envíos no urgentes.",
-        dimensions: "20cm x 15cm x 10cm",
-        maxWeight: "2kg"
+        description: "Paquete eco-friendly con embalaje reciclable.",
       },
     ];
 
@@ -226,20 +220,14 @@
     function updateCount(index, change) {
       packages[index].count = Math.max(0, packages[index].count + change);
       document.getElementById(`count-${index}`).textContent = packages[index].count;
-
-      // Actualiza Google Sheets
-      updateGoogleSheet(index, packages[index].count);
-
+      updateGoogleSheet(index, packages[index].count); // Actualiza Google Sheets inmediatamente
       saveToLocalStorage();
     }
 
     function resetPackage(index) {
       packages[index].count = 0;
       document.getElementById(`count-${index}`).textContent = 0;
-
-      // Actualiza Google Sheets
-      updateGoogleSheet(index, packages[index].count);
-
+      updateGoogleSheet(index, packages[index].count); // Actualiza Google Sheets inmediatamente
       saveToLocalStorage();
     }
 
@@ -248,9 +236,7 @@
         packages.forEach((pkg, index) => {
           pkg.count = 0;
           document.getElementById(`count-${index}`).textContent = 0;
-
-          // Actualiza Google Sheets
-          updateGoogleSheet(index, packages[index].count);
+          updateGoogleSheet(index, packages[index].count); // Actualiza Google Sheets inmediatamente
         });
         saveToLocalStorage();
       }
@@ -265,8 +251,6 @@
       modalTitle.textContent = pkg.name;
       modalContent.innerHTML = `
         <p><strong>Descripción:</strong> ${pkg.description}</p>
-        <p><strong>Dimensiones:</strong> ${pkg.dimensions}</p>
-        <p><strong>Peso máximo:</strong> ${pkg.maxWeight}</p>
         <p><strong>Cantidad actual:</strong> ${pkg.count}</p>
       `;
       
@@ -282,8 +266,23 @@
       saveThemePreference();
     }
 
+    function saveToLocalStorage() {
+      localStorage.setItem('packageCounts', JSON.stringify(packages.map(pkg => pkg.count)));
+    }
+
+    function loadFromLocalStorage() {
+      const savedCounts = JSON.parse(localStorage.getItem('packageCounts'));
+      if (savedCounts) {
+        savedCounts.forEach((count, index) => {
+          if (index < packages.length) {
+            packages[index].count = count;
+          }
+        });
+      }
+    }
+
     function saveThemePreference() {
-      localStorage.setItem('theme', document.body.dataset.theme);
+      localStorage.setItem('theme', document.body.dataset.theme || 'light');
     }
 
     function loadThemePreference() {
@@ -293,56 +292,38 @@
       }
     }
 
-    function saveToLocalStorage() {
-      localStorage.setItem('packages', JSON.stringify(packages));
-    }
-
-    function loadFromLocalStorage() {
-      const savedPackages = localStorage.getItem('packages');
-      if (savedPackages) {
-        const parsedPackages = JSON.parse(savedPackages);
-        parsedPackages.forEach((pkg, index) => {
-          packages[index].count = pkg.count;
-          document.getElementById(`count-${index}`).textContent = pkg.count;
-        });
-      }
-    }
-
     function updateGoogleSheet(index, count) {
+      const data = {
+        values: [[packages[index].name, count]]
+      };
       const params = {
         spreadsheetId: SHEET_ID,
         range: `Control de Stock!A${index + 2}`, // Usa el nombre correcto de la hoja
-        valueInputOption: 'USER_ENTERED',
-        resource: {
-          values: [
-            [count],
-          ],
-        },
+        valueInputOption: 'USER_ENTERED', // Permite que se interpreten los valores
+        resource: data
       };
-      const request = gapi.client.sheets.spreadsheets.values.update(params);
-      request.then(response => {
-        console.log(`Updated cell: ${response.result.updatedCells} cells updated.`);
-      }, error => {
-        console.error('Error updating sheet:', error);
+      gapi.client.sheets.spreadsheets.values.update(params).then((response) => {
+        console.log(`Actualizado ${packages[index].name} a ${count}`);
+      }).catch(error => {
+        console.error('Error actualizando Google Sheets:', error);
       });
     }
 
-    function initGAPI() {
+    window.onload = () => {
       gapi.load('client', () => {
-        gapi.client.init({
-          apiKey: API_KEY,
-          discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-        }).then(() => {
-          loadFromLocalStorage();
-        });
+        gapi.client.setApiKey(API_KEY);
+        loadFromLocalStorage();
+        loadThemePreference();
+        createPackageCards();
       });
-    }
+    };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadThemePreference();
-      createPackageCards();
-      initGAPI();
-    });
+    window.onclick = (event) => {
+      const modal = document.getElementById('modal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    };
   </script>
 </body>
 </html>
